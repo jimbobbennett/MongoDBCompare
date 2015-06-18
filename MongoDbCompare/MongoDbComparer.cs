@@ -13,41 +13,26 @@ namespace MongoDbCompare
     {
         private readonly IMongoCollection<T> _collection1;
         private readonly IMongoCollection<T> _collection2;
-        // ReSharper disable once StaticMemberInGenericType
-        private static readonly IList<PropertyInfo> PropertyInfos;
-
-        static MongoDbComparer()
+        private readonly IList<PropertyInfo> _propertyInfos;
+        
+        private static bool ShouldIgnore(MemberInfo propertyInfo)
         {
-            var props = typeof (T).GetProperties(BindingFlags.Instance | BindingFlags.Public);
-            PropertyInfos = props.Where(ShouldIgnore).ToList();
+            return (propertyInfo.GetCustomAttributes<BsonIgnoreAttribute>().Any() ||
+                    propertyInfo.GetCustomAttributes<BsonIdAttribute>().Any());
         }
 
-        private static bool ShouldIgnore(PropertyInfo propertyInfo)
+        public MongoDbComparer(string connectionString1, string database1, string collection1, 
+            string connectionString2, string database2, string collection2,
+            IEnumerable<string> propertiesToIgnoreInTheComparison = null)
         {
-            return !(propertyInfo.GetCustomAttributes<BsonIgnoreAttribute>().Any() ||
-                     propertyInfo.GetCustomAttributes<BsonIdAttribute>().Any());
-        }
+            var props = typeof(T).GetProperties(BindingFlags.Instance | BindingFlags.Public);
 
-        public MongoDbComparer(string connectionString1, string database1, string collection1, string connectionString2, string database2, string collection2)
-        {
+            var toIgnore = new HashSet<string>(propertiesToIgnoreInTheComparison ?? Enumerable.Empty<string>());
+
+            _propertyInfos = props.Where(p => !ShouldIgnore(p) && !toIgnore.Contains(p.Name)).ToList();
+
             _collection1 = new MongoClient(connectionString1).GetDatabase(database1).GetCollection<T>(collection1);
             _collection2 = new MongoClient(connectionString2).GetDatabase(database2).GetCollection<T>(collection2);
-        }
-
-        private class Results : IResults<T>
-        {
-            internal Results(IEnumerable<T> onlyInCollection1, IEnumerable<T> onlyInCollection2, IEnumerable<Tuple<T, T>> different)
-            {
-                OnlyInCollection1 = onlyInCollection1;
-                OnlyInCollection2 = onlyInCollection2;
-                Different = different;
-            }
-
-            public IEnumerable<T> OnlyInCollection1 { get; private set; }
-            public IEnumerable<T> OnlyInCollection2 { get; private set; }
-            public IEnumerable<Tuple<T, T>> Different { get; private set; }
-
-            public bool Match { get { return !OnlyInCollection1.Any() && !OnlyInCollection2.Any() && !Different.Any(); } }
         }
 
         public async Task<IResults<T>> CompareAsync<TKey>(Func<T, TKey> idFunc)
@@ -78,12 +63,12 @@ namespace MongoDbCompare
                     itemsIn2Only.Add(item.Value);
             }
 
-            return new Results(itemsIn1Only, itemsIn2Only, itemsThatDontMatch);
+            return new Results<T>(itemsIn1Only, itemsIn2Only, itemsThatDontMatch);
         }
 
-        private static bool CompareItems(T item, T otherItem)
+        private bool CompareItems(T item, T otherItem)
         {
-            return !(from propertyInfo in PropertyInfos
+            return !(from propertyInfo in _propertyInfos
                 let val1 = propertyInfo.GetValue(item)
                 let val2 = propertyInfo.GetValue(otherItem)
                 where !Equals(val1, val2)

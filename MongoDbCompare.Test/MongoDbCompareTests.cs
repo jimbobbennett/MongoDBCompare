@@ -68,6 +68,25 @@ namespace MongoDbCompare.Test
         }
 
         [Test]
+        public async Task NonIdenticalItemsMatchIfTheNonMatchingFieldIsIgnoredAsync()
+        {
+            var now = DateTime.Now;
+
+            await AddItemToCollection1Async(0, "Item1", 1, now, new BsonDocument("Foo", "1").AddRange(new BsonDocument("Bar", 0)));
+            await AddItemToCollection1Async(0, "Item2", 1, now.AddDays(1), new BsonDocument("FooBar", "2").AddRange(new BsonDocument("BarFoo", 1)));
+            await AddItemToCollection2Async(0, "Item1", 2, now, new BsonDocument("Foo", "1").AddRange(new BsonDocument("Bar", 0)));
+            await AddItemToCollection2Async(0, "Item2", 2, now.AddDays(1), new BsonDocument("FooBar", "2").AddRange(new BsonDocument("BarFoo", 1)));
+
+            var comparer = new MongoDbComparer<Item>(ConnectionString1, Database1, Collection1, ConnectionString2, Database2, Collection2, new[] {"Number"});
+            var results = await comparer.CompareAsync(i => i.Name);
+
+            results.Match.Should().BeTrue();
+            results.OnlyInCollection1.Should().BeEmpty();
+            results.OnlyInCollection2.Should().BeEmpty();
+            results.Different.Should().BeEmpty();
+        }
+
+        [Test]
         public async Task NonIdenticalItemsDontMatchAndAreReturnedAsDifferencesAsync()
         {
             var now = DateTime.Now;
