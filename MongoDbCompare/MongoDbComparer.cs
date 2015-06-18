@@ -42,6 +42,11 @@ namespace MongoDbCompare
             var props = typeof(T).GetProperties(BindingFlags.Instance | BindingFlags.Public);
 
             var toIgnore = new HashSet<string>(propertiesToIgnoreInTheComparison ?? Enumerable.Empty<string>());
+            var propertyNames = new HashSet<string>(props.Select(p => p.Name));
+
+            var name = toIgnore.FirstOrDefault(n => !propertyNames.Contains(n));
+            if (name != null)
+                throw new ArgumentException("Property " + name + " is not on the specified document type.", "propertiesToIgnoreInTheComparison");
 
             _propertyInfos = props.Where(p => !ShouldIgnore(p) && !toIgnore.Contains(p.Name)).ToList();
 
