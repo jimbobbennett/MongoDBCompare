@@ -8,6 +8,10 @@ using MongoDB.Driver;
 
 namespace MongoDbCompare
 {
+    /// <summary>
+    /// A helper class that compares two MongoDB collections
+    /// </summary>
+    /// <typeparam name="T">The type for the document stored in the collection</typeparam>
     public class MongoDbComparer<T>
         where T : class
     {
@@ -21,8 +25,18 @@ namespace MongoDbCompare
                     propertyInfo.GetCustomAttributes<BsonIdAttribute>().Any();
         }
 
-        public MongoDbComparer(string connectionString1, string database1, string collection1, 
-            string connectionString2, string database2, string collection2,
+        /// <summary>
+        /// Creates a new instance of the comparer
+        /// </summary>
+        /// <param name="connectionString1">The connection string for the first MongoDB instsance for the comparison</param>
+        /// <param name="database1">The name of the database in the first MongoDB instance to use for the comparison</param>
+        /// <param name="collection1">The name of the collection in the first MongoDB instance to use for the comparison</param>
+        /// <param name="connectionString2">The connection string for the second MongoDB instsance for the comparison</param>
+        /// <param name="database2">The name of the database in the second MongoDB instance to use for the comparison.  If this is null then the name of the database from database1 is used</param>
+        /// <param name="collection2">The name of the collection in the first MongoDB instance to use for the comparison.  If this is null then the name of the collection from collection1 is used</param>
+        /// <param name="propertiesToIgnoreInTheComparison">The names of any properties to ignore when doing the comparison</param>
+        public MongoDbComparer(string connectionString1, string database1, string collection1,
+            string connectionString2, string database2 = null, string collection2 = null,
             IEnumerable<string> propertiesToIgnoreInTheComparison = null)
         {
             var props = typeof(T).GetProperties(BindingFlags.Instance | BindingFlags.Public);
@@ -32,9 +46,15 @@ namespace MongoDbCompare
             _propertyInfos = props.Where(p => !ShouldIgnore(p) && !toIgnore.Contains(p.Name)).ToList();
 
             _collection1 = new MongoClient(connectionString1).GetDatabase(database1).GetCollection<T>(collection1);
-            _collection2 = new MongoClient(connectionString2).GetDatabase(database2).GetCollection<T>(collection2);
+            _collection2 = new MongoClient(connectionString2).GetDatabase(database2 ?? database1).GetCollection<T>(collection2 ?? collection1);
         }
 
+        /// <summary>
+        /// Compares the two collections asyncronously and returns an IResult
+        /// </summary>
+        /// <typeparam name="TKey">The type for the unique key for the document</typeparam>
+        /// <param name="idFunc">A func that returns the unique key for a given document</param>
+        /// <returns>An IResult containing the results of the comparison</returns>
         public async Task<IResults<T>> CompareAsync<TKey>(Func<T, TKey> idFunc)
         {
             var itemsIn1Only = new List<T>();
