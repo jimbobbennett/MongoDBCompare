@@ -17,8 +17,8 @@ namespace MongoDbCompare
         
         private static bool ShouldIgnore(MemberInfo propertyInfo)
         {
-            return (propertyInfo.GetCustomAttributes<BsonIgnoreAttribute>().Any() ||
-                    propertyInfo.GetCustomAttributes<BsonIdAttribute>().Any());
+            return propertyInfo.GetCustomAttributes<BsonIgnoreAttribute>().Any() ||
+                    propertyInfo.GetCustomAttributes<BsonIdAttribute>().Any();
         }
 
         public MongoDbComparer(string connectionString1, string database1, string collection1, 
