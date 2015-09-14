@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Threading.Tasks;
 using FluentAssertions;
 using MongoDB.Bson;
@@ -60,6 +60,30 @@ namespace MongoDbCompare.Test
             await AddItemToCollection2Async(0, "Item2", 21, now.AddDays(1), new BsonDocument("FooBar", "2").AddRange(new BsonDocument("BarFoo", 1)));
 
             var results = await _comparer.CompareAsync(i => i.Name);
+
+            results.Match.Should().BeTrue();
+            results.OnlyInCollection1.Should().BeEmpty();
+            results.OnlyInCollection2.Should().BeEmpty();
+            results.Different.Should().BeEmpty();
+        }
+
+        [Test]
+        public async Task IdenticalItemsMatchIgnoringItemsFilteredOutAsync()
+        {
+            var now = DateTime.Now;
+
+            await AddItemToCollection1Async(0, "Item1", 1, now, new BsonDocument("Foo", "1").AddRange(new BsonDocument("Bar", 0)));
+            await AddItemToCollection1Async(0, "Item2", 21, now.AddDays(1), new BsonDocument("FooBar", "2").AddRange(new BsonDocument("BarFoo", 1)));
+            await AddItemToCollection2Async(0, "Item1", 1, now, new BsonDocument("Foo", "1").AddRange(new BsonDocument("Bar", 0)));
+            await AddItemToCollection2Async(0, "Item2", 21, now.AddDays(1), new BsonDocument("FooBar", "2").AddRange(new BsonDocument("BarFoo", 1)));
+
+            var item = new Item(0, "Item3", 22, now, null) {Ignore = true};
+            await _collection1.InsertOneAsync(item);
+
+            var comparer = new MongoDbComparer<Item>(ConnectionString1, Database1, Collection1, ConnectionString2, Database2, Collection2,
+                filter: i => !i.Ignore);
+
+            var results = await comparer.CompareAsync(i => i.Name);
 
             results.Match.Should().BeTrue();
             results.OnlyInCollection1.Should().BeEmpty();
