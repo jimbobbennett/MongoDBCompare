@@ -1,6 +1,7 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Reflection;
 using System.Threading.Tasks;
 using MongoDB.Bson.Serialization.Attributes;
@@ -15,6 +16,7 @@ namespace MongoDbCompare
     public class MongoDbComparer<T>
         where T : class
     {
+        private readonly Expression<Func<T, bool>> _filter;
         private readonly IMongoCollection<T> _collection1;
         private readonly IMongoCollection<T> _collection2;
         private readonly IList<PropertyInfo> _propertyInfos;
@@ -35,10 +37,13 @@ namespace MongoDbCompare
         /// <param name="database2">The name of the database in the second MongoDB instance to use for the comparison.  If this is null then the name of the database from database1 is used</param>
         /// <param name="collection2">The name of the collection in the first MongoDB instance to use for the comparison.  If this is null then the name of the collection from collection1 is used</param>
         /// <param name="propertiesToIgnoreInTheComparison">The names of any properties to ignore when doing the comparison</param>
+        /// <param name="filter">A filter to use to filter out any items in the collection before comparing</param>
         public MongoDbComparer(string connectionString1, string database1, string collection1,
             string connectionString2, string database2 = null, string collection2 = null,
-            IEnumerable<string> propertiesToIgnoreInTheComparison = null)
+            IEnumerable<string> propertiesToIgnoreInTheComparison = null,
+            Expression<Func<T, bool>> filter = null)
         {
+            _filter = filter ?? (i => true);
             var props = typeof(T).GetProperties(BindingFlags.Instance | BindingFlags.Public);
 
             var toIgnore = new HashSet<string>(propertiesToIgnoreInTheComparison ?? Enumerable.Empty<string>());
@@ -100,9 +105,9 @@ namespace MongoDbCompare
                 select val1).Any();
         }
 
-        private static async Task<Dictionary<TKey, T>> GetItemsDictionary<TKey>(Func<T, TKey> idFunc, IMongoCollection<T> collection)
+        private async Task<Dictionary<TKey, T>> GetItemsDictionary<TKey>(Func<T, TKey> idFunc, IMongoCollection<T> collection)
         {
-            var collectionItems = await collection.FindAsync(i => true);
+            var collectionItems = await collection.FindAsync(_filter);
             return (await collectionItems.ToListAsync()).ToDictionary(idFunc, i => i);
         }
     }
