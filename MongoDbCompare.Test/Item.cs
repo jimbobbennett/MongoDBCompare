@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
@@ -27,6 +27,8 @@ namespace MongoDbCompare.Test
         public int Number { get; set; }
 
         public DateTime Date { get; set; }
+
+        public bool Ignore { get; set; }
 
         public BsonDocument SubDocument { get; set; }
     }
