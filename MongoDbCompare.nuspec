@@ -21,8 +21,8 @@
     </dependencies>
   </metadata>
   <files>
-    <file src=".\MongoDbCompare\bin\$Configuration$\MongoDbCompare.dll" target="lib\net45\MongoDbCompare.dll" />
-    <file src=".\MongoDbCompare\bin\$Configuration$\MongoDbCompare.pdb" target="lib\net45\MongoDbCompare.pdb" />
-    <file src=".\**\*.cs" target="src\" />
+    <file src=".\MongoDbCompare\bin\Release\MongoDbCompare.dll" target="lib\net45\MongoDbCompare.dll" />
+    <file src=".\MongoDbCompare\bin\Release\MongoDbCompare.pdb" target="lib\net45\MongoDbCompare.pdb" />
+    <file src=".\MongoDbCompare\**\*.cs" target="src\" />
   </files>
 </package>
